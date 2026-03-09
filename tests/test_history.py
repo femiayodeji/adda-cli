@@ -1,7 +1,7 @@
 import unittest
 
-from convo.history import CONFIG_DIR, _ensure_config_dir, append_exchange, clear_history
-from convo.history import clear_history, append_exchange, save_history, load_history
+from adda.history import CONFIG_DIR, _ensure_config_dir, append_exchange, clear_history
+from adda.history import clear_history, append_exchange, save_history, load_history
 
 class TestHistory(unittest.TestCase):
     def test_history_ensure_config_dir(self):

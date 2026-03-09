@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "convo"
+name = "adda"
 version = "0.1.0"
 description = "A CLI tool that suggests Linux commands using a local Ollama LLM"
 readme = "README.md"
@@ -25,10 +25,10 @@ dev = [
 ]
 
 [project.scripts]
-convo = "convo.cli:app"        # `convo` command maps to cli.py -> app
+adda = "adda.cli:app"        # `adda` command maps to cli.py -> app
 
 [tool.hatch.build.targets.wheel]
-packages = ["convo"]
+packages = ["adda"]
 
 [tool.ruff]
 line-length = 88

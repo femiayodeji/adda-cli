@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-# ~/.config/convo/session.json
-CONFIG_DIR = Path.home() / ".config" / "convo"
+# ~/.config/adda/session.json
+CONFIG_DIR = Path.home() / ".config" / "adda"
 SESSION_FILE = CONFIG_DIR / "session.json"
 
 # Limit how many past exchanges are sent to the model.
