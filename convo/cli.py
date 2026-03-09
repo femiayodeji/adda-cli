@@ -5,7 +5,7 @@ from rich.text import Text
 from rich.prompt import Confirm
 from rich import print as rprint
 
-from convo.config import load_config, set_model, show_config
+from convo.config import load_config, set_model, show_config, set_stream
 from convo.history import load_history, save_history, append_exchange, clear_history, history_summary
 from convo.ollama import chat, check_ollama_running, check_model_available
 from convo.prompt import build_system_prompt
@@ -77,8 +77,10 @@ def _display_error(message: str) -> None:
 def ask(
     query: str = typer.Argument(..., help="What you want to do in plain English."),
     new: bool = typer.Option(False, "--new", "-n", help="Start a fresh conversation."),
+    stream: bool | None = typer.Option(None, "--stream/--no-stream", help="Stream model output as it is generated."),
 ):
     config = load_config()
+    use_stream = config.stream if stream is None else stream
 
     if not _preflight_checks(config.model):
         raise typer.Exit(1)
@@ -90,13 +92,25 @@ def ask(
     history = load_history()
     system_prompt = build_system_prompt()
 
-    with console.status("[dim]Thinking...[/dim]", spinner="dots"):
+    if use_stream:
+        console.print("[dim]Streaming response...[/dim]")
         response = chat(
             model=config.model,
             system_prompt=system_prompt,
             history=history,
             user_message=query,
+            stream=True,
+            on_token=lambda token: console.print(token, end="", highlight=False, soft_wrap=True),
         )
+        console.print()
+    else:
+        with console.status("[dim]Thinking...[/dim]", spinner="dots"):
+            response = chat(
+                model=config.model,
+                system_prompt=system_prompt,
+                history=history,
+                user_message=query,
+            )
 
     if response.kind == "command":
         _display_command(response.command, response.reason)
@@ -115,12 +129,33 @@ def ask(
 def config(
     llm: str = typer.Option(None, "--llm", help="Set the Ollama model to use."),
     show: bool = typer.Option(False, "--show", help="Show current config."),
+    stream: str | None = typer.Option(None, "--stream", help="Set whether to stream model output (true/false)."),
+    no_stream: bool = typer.Option(False, "--no-stream", help="Disable streamed model output."),
 ):
     if llm:
         updated = set_model(llm)
         console.print(f"[green]✓[/green] Model set to [cyan]{updated.model}[/cyan]")
         return
 
+    if no_stream:
+        updated = set_stream(False)
+        console.print(f"[green]✓[/green] Stream output {'enabled' if updated.stream else 'disabled'}")
+        return
+
+    if stream is not None:
+        normalized = stream.strip().lower()
+        if normalized in {"true", "1", "yes", "on"}:
+            stream_value = True
+        elif normalized in {"false", "0", "no", "off"}:
+            stream_value = False
+        else:
+            _display_error("Invalid --stream value. Use true or false.")
+            raise typer.Exit(2)
+
+        updated = set_stream(stream_value)
+        console.print(f"[green]✓[/green] Stream output {'enabled' if updated.stream else 'disabled'}")
+        return
+    
     console.print(show_config())
 
 

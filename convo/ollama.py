@@ -1,5 +1,7 @@
 import requests
+import json
 from dataclasses import dataclass
+from typing import Callable
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_CHAT_ENDPOINT = f"{OLLAMA_BASE_URL}/api/chat"
@@ -67,6 +69,8 @@ def chat(
     system_prompt: str,
     history: list[dict],
     user_message: str,
+    stream: bool = False,
+    on_token: Callable[[str], None] | None = None,
 ) -> OllamaResponse:
     messages = (
         [{"role": "system", "content": system_prompt}]
@@ -80,12 +84,28 @@ def chat(
             json={
                 "model": model,
                 "messages": messages,
-                "stream": False,
+                "stream": stream,
             },
+            stream=stream,
             timeout=60,
         )
         response.raise_for_status()
-        content = response.json()["message"]["content"]
+
+        if stream:
+            chunks: list[str] = []
+            for line in response.iter_lines(decode_unicode=True):
+                if not line:
+                    continue
+                data = json.loads(line)
+                token = data.get("message", {}).get("content", "")
+                if token:
+                    chunks.append(token)
+                    if on_token:
+                        on_token(token)
+            content = "".join(chunks)
+        else:
+            content = response.json()["message"]["content"]
+
         return _parse_response(content)
 
     except requests.ConnectionError:

@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock, patch
 from convo.ollama import _parse_response, OllamaResponse, check_ollama_running, check_model_available
 
 class TestOllama(unittest.TestCase):
@@ -45,6 +46,64 @@ class TestOllama(unittest.TestCase):
         response = _parse_response(text)
         self.assertEqual(response.kind, "error")
         self.assertEqual(response.raw, text)
+
+    @patch("convo.ollama.requests.post")
+    def test_chat_non_streaming(self, mock_post):
+        from convo.ollama import chat
+
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.json.return_value = {
+            "message": {"content": "COMMAND: pwd\nREASON: Show current directory"}
+        }
+        mock_post.return_value = mock_response
+
+        response = chat(
+            model="llama3.1",
+            system_prompt="system",
+            history=[],
+            user_message="where am i",
+        )
+
+        self.assertEqual(response.kind, "command")
+        self.assertEqual(response.command, "pwd")
+        self.assertEqual(response.reason, "Show current directory")
+        _, kwargs = mock_post.call_args
+        self.assertFalse(kwargs["json"]["stream"])
+
+    @patch("convo.ollama.requests.post")
+    def test_chat_streaming(self, mock_post):
+        from convo.ollama import chat
+
+        mock_response = Mock()
+        mock_response.raise_for_status.return_value = None
+        mock_response.iter_lines.return_value = [
+            '{"message":{"content":"COMMAND: pwd\\n"},"done":false}',
+            '{"message":{"content":"REASON: Show current directory"},"done":false}',
+            '{"done":true}',
+        ]
+        mock_post.return_value = mock_response
+
+        seen_tokens: list[str] = []
+        response = chat(
+            model="llama3.1",
+            system_prompt="system",
+            history=[],
+            user_message="where am i",
+            stream=True,
+            on_token=seen_tokens.append,
+        )
+
+        self.assertEqual(response.kind, "command")
+        self.assertEqual(response.command, "pwd")
+        self.assertEqual(response.reason, "Show current directory")
+        self.assertEqual(
+            seen_tokens,
+            ["COMMAND: pwd\n", "REASON: Show current directory"],
+        )
+        _, kwargs = mock_post.call_args
+        self.assertTrue(kwargs["json"]["stream"])
+        self.assertTrue(kwargs["stream"])
 
 if __name__ == "__main__":
     unittest.main()
