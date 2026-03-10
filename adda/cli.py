@@ -2,7 +2,7 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-from rich.prompt import Confirm
+
 from rich import print as rprint
 
 from adda.config import (
@@ -13,10 +13,9 @@ from adda.config import (
     show_config,
     set_stream,
 )
-from adda.history import load_history, save_history, append_exchange, clear_history, history_summary
+from adda.history import history_summary, load_history, save_history, append_exchange, clear_history
 from adda.ollama import (
     chat,
-    check_groq_api_key,
     check_groq_model_available,
     check_model_available,
     check_ollama_running,
@@ -33,12 +32,10 @@ console = Console()
 
 def _preflight_checks(provider: str, model: str) -> bool:
     normalized = provider.strip().lower()
-    if normalized == "qroq":
-        normalized = "groq"
 
     if normalized == "groq":
         api_key = get_groq_api_key()
-        if not check_groq_api_key():
+        if not api_key:
             console.print(
                 "[bold red]✗ GROQ_API_KEY is not set.[/bold red]\n"
                 "  Export it with: [cyan]export GROQ_API_KEY=your_key[/cyan]"
@@ -94,7 +91,7 @@ def _display_command(command: str, reason: str | None) -> None:
     )
 
 
-def _display_clarification(question: str) -> None:
+def _display_clarification(question: str | None) -> None:
     console.print(
         Panel(
             Text(f"  {question}", style="yellow"),
@@ -170,11 +167,12 @@ def ask(
                 api_key=get_groq_api_key(),
             )
 
+
     if response.kind == "command":
-        _display_command(response.command, response.reason)
+        _display_command(response.command or "", response.reason or "")
 
     elif response.kind == "clarify":
-        _display_clarification(response.clarification)
+        _display_clarification(response.clarification or "")
 
     elif response.kind == "humane":
         _display_humane(response.reason or response.raw or "Done.")
@@ -200,8 +198,6 @@ def config(
 
     if provider:
         normalized = provider.strip().lower()
-        if normalized == "qroq":
-            normalized = "groq"
         if normalized not in {"ollama", "groq"}:
             _display_error("Invalid --provider value. Use ollama or groq.")
             raise typer.Exit(2)
@@ -258,11 +254,8 @@ def clear():
 def status():
     cfg = load_config()
     provider = cfg.provider.strip().lower()
-    if provider == "qroq":
-        provider = "groq"
-
     if provider == "groq":
-        api_key_ok = check_groq_api_key()
+        api_key_ok = bool(get_groq_api_key())
         model_ok = check_groq_model_available(cfg.model) if api_key_ok else False
         provider_status = "[green]configured[/green]" if api_key_ok else "[red]missing GROQ_API_KEY[/red]"
         model_status = "[green]available[/green]" if model_ok else "[red]not found[/red]"

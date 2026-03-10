@@ -32,7 +32,7 @@ class TestCLI(unittest.TestCase):
         )
 
     @patch("adda.cli.check_groq_model_available", return_value=True)
-    @patch("adda.cli.check_groq_api_key", return_value=True)
+    @patch("adda.cli.get_groq_api_key", return_value="sk-test")
     def test_cli__preflight_checks_groq(self, _mock_key, _mock_model):
         self.assertTrue(
             _preflight_checks("groq", "llama-3.3-70b-versatile"),

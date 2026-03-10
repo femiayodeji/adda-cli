@@ -25,16 +25,13 @@ def _ensure_config_dir() -> None:
 def load_config() -> Config:
     if not CONFIG_FILE.exists():
         return Config()
-    try:
-        data = json.loads(CONFIG_FILE.read_text())
-        return Config(
-            provider=data.get("provider", DEFAULT_PROVIDER),
-            model=data.get("model", DEFAULT_MODEL),
-            stream=data.get("stream", DEFAULT_STREAM),
-            groq_api_key=data.get("groq_api_key"),
-        )
-    except (json.JSONDecodeError, KeyError):
-        return Config()
+    data = json.loads(CONFIG_FILE.read_text())
+    return Config(
+        provider=data.get("provider", DEFAULT_PROVIDER),
+        model=data.get("model", DEFAULT_MODEL),
+        stream=data.get("stream", DEFAULT_STREAM),
+        groq_api_key=data.get("groq_api_key"),
+    )
 
 
 def save_config(config: Config) -> None:
@@ -52,8 +49,6 @@ def set_model(model: str) -> Config:
 def set_provider(provider: str) -> Config:
     config = load_config()
     normalized = provider.strip().lower()
-    if normalized == "qroq":
-        normalized = "groq"
     config.provider = normalized
     save_config(config)
     return config
