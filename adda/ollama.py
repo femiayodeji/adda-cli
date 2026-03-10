@@ -51,6 +51,8 @@ def _parse_response(text: str) -> OllamaResponse:
         return OllamaResponse(kind="clarify", clarification=result["clarification"], raw=text)
     if result["command"]:
         return OllamaResponse(kind="command", command=result["command"], reason=result["reason"], raw=text)
+    
+    # A REASON without a COMMAND means the model responded conversationally
     if result["reason"]:
         return OllamaResponse(kind="humane", reason=result["reason"], raw=text)
     return OllamaResponse(kind="error", raw=text)
@@ -63,7 +65,6 @@ def chat(
     provider: str = "ollama",
     api_key: str | None = None,
     stream: bool = False,
-    on_token: Callable[[str], None] | None = None,
 ) -> OllamaResponse:
     normalized_provider = provider.strip().lower()
     messages = prepare_messages(system_prompt, history, user_message)
@@ -94,10 +95,6 @@ def chat(
             "messages": messages,
             "stream": stream,
         }
-        def stream_extract_token(data):
-            return data.get("message", {}).get("content", "")
-        stream_line_filter = lambda line: line
-        stream_done_check = lambda line: False
         parse_content = lambda resp: resp.json()["message"]["content"]
 
     try:

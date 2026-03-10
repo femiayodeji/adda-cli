@@ -25,7 +25,7 @@ dev = [
 ]
 
 [project.scripts]
-adda = "adda.cli:app"        # `adda` command maps to cli.py -> app
+adda = "adda.cli:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["adda"]

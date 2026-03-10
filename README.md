@@ -12,7 +12,9 @@
 ## Usage
 
 ```sh
-adda ask "List all files modified in the last 24 hours"
+adda "List all files modified in the last 24 hours"
+Or
+adda cmd "List all files modified in the last 24 hours"
 ```
 
 - Use plain English to describe what you want to do.

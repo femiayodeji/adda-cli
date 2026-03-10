@@ -90,7 +90,7 @@ def _display_command(command: str, reason: str | None) -> None:
         )
     )
 
-def _run_command(command: str) -> None:
+def _run_command(command: str) -> subprocess.CompletedProcess:
     try:
         result = subprocess.run(
             command,
@@ -112,8 +112,16 @@ def _run_command(command: str) -> None:
         if result.returncode != 0:
             console.print(f"[dim red]  Exit code: {result.returncode}[/dim red]")
 
+        return result
+
     except Exception as e:
         _display_error(f"Failed to run command: {e}")
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=1,
+            stdout="",
+            stderr=str(e),
+        )
 
 def _display_clarification(question: str | None) -> None:
     console.print(
@@ -149,7 +157,7 @@ def _display_humane(message: str) -> None:
 
 
 @app.command()
-def ask(
+def cmd(
     query: str = typer.Argument(..., help="What you want to do in plain English."),
     new: bool = typer.Option(False, "--new", "-n", help="Start a fresh conversation."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Run command without confirmation."),
@@ -179,19 +187,24 @@ def ask(
     if response.kind == "command":
         _display_command(response.command or "", response.reason or "")
         if yes or Confirm.ask("  Run this command?", default=False):
-            _run_command(response.command or "")        
+            result = _run_command(response.command or "")
+            output = result.stdout or result.stderr
+            raw_str = response.raw if response.raw is not None else ""
+            output_str = output if output is not None else ""
+            updated_history = append_exchange(history, query, raw_str + "\nOUTPUT:\n" + output_str)
+
     elif response.kind == "clarify":
         _display_clarification(response.clarification or "")
     elif response.kind == "humane":
         _display_humane(response.reason or response.raw or "Done.")
-    elif response.kind != "command":
+    else:
         _display_error(response.raw or "Unknown error.")
 
     updated_history = append_exchange(history, query, response.raw or "")
     save_history(updated_history)
 
-@app.command()
-def config(
+@app.command(name="config")
+def configure(
     model: str | None = typer.Option(None, "--model", help="Set the model to use for the selected provider."),
     provider: str | None = typer.Option(None, "--provider", help="Set provider: ollama or groq."),
     show: bool = typer.Option(False, "--show", help="Show current config."),
@@ -265,6 +278,30 @@ def status():
 
     rprint(f"  {history_summary()}")
 
+@app.callback(invoke_without_command=True, context_settings={"allow_extra_args": True, "allow_interspersed_args": False})
+def main(
+    ctx: typer.Context,
+    new: bool = typer.Option(False, "--new", "-n"),
+    yes: bool = typer.Option(False, "--yes", "-y"),
+):
+    if ctx.invoked_subcommand is not None:
+        return
+    query = " ".join(ctx.args) if ctx.args else None
+    if not query:
+        console.print(ctx.get_help())
+        return
+    cmd(query=query, new=new, yes=yes)
+
+def run():
+    import sys
+    args = sys.argv[1:]
+    
+    # if first arg doesn't look like a subcommand, inject "cmd"
+    subcommands = {"config", "clear", "status", "cmd"}
+    if args and args[0] not in subcommands and not args[0].startswith("-"):
+        sys.argv.insert(1, "cmd")
+    
+    app()
 
 if __name__ == "__main__":
-    app()
+    run()
