@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from adda.config import (
@@ -5,7 +6,6 @@ from adda.config import (
     Config,
     load_config,
     save_config,
-    set_groq_api_key,
     set_model,
     set_provider,
     set_stream,
@@ -46,7 +46,7 @@ class TestConfig(unittest.TestCase):
         self.assertFalse(config.stream)
 
     def test_set_groq_api_key(self):
-        set_groq_api_key("sk-test")
+        os.environ["GROQ_API_KEY"] = "sk-test"
         config = load_config()
         self.assertEqual(config.groq_api_key, "sk-test")
 

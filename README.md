@@ -66,9 +66,6 @@ If you want to use Groq as the provider, set your API key as an environment vari
 export GROQ_API_KEY=your-groq-api-key
 ```
 
-Or add it to the config file at `~/.config/adda/config.json` under `groq_api_key`.
-
-
 ### Example: Configure for Ollama (Llama Model)
 
 You can configure adda to use Ollama and a llama model with streaming enabled:

@@ -8,7 +8,6 @@ import subprocess
 
 from adda.config import (
     load_config,
-    set_groq_api_key,
     set_model,
     set_provider,
     show_config,
@@ -232,7 +231,6 @@ def config(
     show: bool = typer.Option(False, "--show", help="Show current config."),
     stream: str | None = typer.Option(None, "--stream", help="Set whether to stream model output (true/false)."),
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streamed model output."),
-    api_key: str | None = typer.Option(None, "--api-key", help="Set Groq API key for provider=groq."),
 ):
     updated_any = False
 
@@ -249,16 +247,6 @@ def config(
     if target_model:
         updated = set_model(target_model)
         console.print(f"[green]✓[/green] Model set to [cyan]{updated.model}[/cyan]")
-        updated_any = True
-
-    if api_key is not None:
-        normalized_key = api_key.strip()
-        key_to_save = normalized_key or None
-        set_groq_api_key(key_to_save)
-        if key_to_save:
-            console.print("[green]✓[/green] Groq API key set")
-        else:
-            console.print("[green]✓[/green] Groq API key cleared")
         updated_any = True
 
     if no_stream:

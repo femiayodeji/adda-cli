@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
@@ -15,7 +16,6 @@ class Config:
     provider: str = DEFAULT_PROVIDER
     model: str = DEFAULT_MODEL
     stream: bool = DEFAULT_STREAM
-    groq_api_key: str | None = None
 
 
 def _ensure_config_dir() -> None:
@@ -30,7 +30,6 @@ def load_config() -> Config:
         provider=data.get("provider", DEFAULT_PROVIDER),
         model=data.get("model", DEFAULT_MODEL),
         stream=data.get("stream", DEFAULT_STREAM),
-        groq_api_key=data.get("groq_api_key"),
     )
 
 
@@ -59,16 +58,9 @@ def set_stream(stream: bool) -> Config:
     save_config(config)
     return config
 
-
-def set_groq_api_key(api_key: str | None) -> Config:
-    config = load_config()
-    config.groq_api_key = api_key
-    save_config(config)
-    return config
-
 def show_config() -> str:
     config = load_config()
-    groq_api_key_status = "set" if config.groq_api_key else "not set"
+    groq_api_key_status = "set" if os.environ.get("GROQ_API_KEY") else "not set (read from environment variable only)"
     return (
         f"Config file : {CONFIG_FILE}\n"
         f"Provider    : {config.provider}\n"

@@ -29,11 +29,7 @@ def get_groq_api_key() -> str | None:
     env_key = os.environ.get("GROQ_API_KEY")
     if env_key:
         return env_key
-    try:
-        from adda.config import load_config
-        return load_config().groq_api_key
-    except Exception:
-        return None
+    return None
 
 def prepare_messages(system_prompt: str, history: list[dict], user_message: str) -> list[dict]:
     return (

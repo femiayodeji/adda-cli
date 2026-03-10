@@ -46,18 +46,6 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         mock_set_model.assert_called_once_with("llama3.2")
 
-    @patch("adda.cli.set_groq_api_key")
-    def test_config_command_sets_api_key(self, mock_set_api_key):
-        result = runner.invoke(app, ["config", "--api-key", "sk-test"])
-        self.assertEqual(result.exit_code, 0)
-        mock_set_api_key.assert_called_once_with("sk-test")
-
-    @patch("adda.cli.set_groq_api_key")
-    def test_config_command_clears_api_key_when_empty(self, mock_set_api_key):
-        result = runner.invoke(app, ["config", "--api-key", ""])
-        self.assertEqual(result.exit_code, 0)
-        mock_set_api_key.assert_called_once_with(None)
-    
     def test_display_command(self):
         try:
             _display_command("ls -la", "To list all files in long format")
