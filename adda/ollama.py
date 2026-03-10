@@ -1,8 +1,7 @@
 import requests
-import json
 import os
 from dataclasses import dataclass
-from typing import Callable, Any
+from typing import Callable
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_CHAT_ENDPOINT = f"{OLLAMA_BASE_URL}/api/chat"
@@ -56,34 +55,6 @@ def _parse_response(text: str) -> OllamaResponse:
         return OllamaResponse(kind="humane", reason=result["reason"], raw=text)
     return OllamaResponse(kind="error", raw=text)
 
-def _stream_response(
-    response: requests.Response,
-    on_token: Callable[[str], None] | None,
-    extract_token: Callable[[Any], str],
-    line_filter: Callable[[str], str | None] = lambda line: line,
-    done_check: Callable[[str], bool] = lambda line: False,
-) -> str:
-    chunks: list[str] = []
-    for raw_line in response.iter_lines(decode_unicode=True):
-        if not raw_line:
-            continue
-        line = raw_line.strip()
-        if done_check(line):
-            break
-        filtered = line_filter(line)
-        if filtered is None:
-            continue
-        try:
-            data = json.loads(filtered)
-        except Exception:
-            continue
-        token = extract_token(data)
-        if token:
-            chunks.append(token)
-            if on_token:
-                on_token(token)
-    return "".join(chunks)
-
 def chat(
     model: str,
     system_prompt: str,
@@ -114,20 +85,6 @@ def chat(
             "messages": messages,
             "stream": stream,
         }
-        def stream_extract_token(data):
-            return (
-                data.get("choices", [{}])[0]
-                .get("delta", {})
-                .get("content", "")
-            )
-        def stream_line_filter(line):
-            if line == "data: [DONE]":
-                return None
-            if not line.startswith("data: "):
-                return None
-            return line[len("data: "):]
-        def stream_done_check(line):
-            return line == "data: [DONE]"
         parse_content = lambda resp: resp.json()["choices"][0]["message"]["content"]
     else:
         endpoint = OLLAMA_CHAT_ENDPOINT
@@ -153,16 +110,7 @@ def chat(
         )
         response.raise_for_status()
 
-        if stream:
-            content = _stream_response(
-                response,
-                on_token,
-                stream_extract_token,
-                line_filter=stream_line_filter,
-                done_check=stream_done_check,
-            )
-        else:
-            content = parse_content(response)
+        content = parse_content(response)
 
         return _parse_response(content)
 

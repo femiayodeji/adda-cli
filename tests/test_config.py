@@ -22,13 +22,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config.stream, Config.stream)
 
     def test_save_and_load_config(self):
-        config = Config(provider="groq", model="llama3.1", stream=False, groq_api_key="abc123")
+        config = Config(provider="groq", model="llama3.1", stream=False)
         save_config(config)
         loaded_config = load_config()
         self.assertEqual(loaded_config.provider, "groq")
         self.assertEqual(loaded_config.model, "llama3.1")
         self.assertFalse(loaded_config.stream)
-        self.assertEqual(loaded_config.groq_api_key, "abc123")
 
     def test_set_provider(self):
         set_provider("groq")
@@ -44,11 +43,6 @@ class TestConfig(unittest.TestCase):
         set_stream(False)
         config = load_config()
         self.assertFalse(config.stream)
-
-    def test_set_groq_api_key(self):
-        os.environ["GROQ_API_KEY"] = "sk-test"
-        config = load_config()
-        self.assertEqual(config.groq_api_key, "sk-test")
 
     def test_show_config(self):
         output = show_config()

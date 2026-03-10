@@ -152,11 +152,9 @@ def _display_humane(message: str) -> None:
 def ask(
     query: str = typer.Argument(..., help="What you want to do in plain English."),
     new: bool = typer.Option(False, "--new", "-n", help="Start a fresh conversation."),
-    stream: bool | None = typer.Option(None, "--stream/--no-stream", help="Stream model output as it is generated."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Run command without confirmation."),
 ):
     config = load_config()
-    use_stream = config.stream if stream is None else stream
 
     if not _preflight_checks(config.provider, config.model):
         raise typer.Exit(1)
@@ -168,12 +166,7 @@ def ask(
     history = load_history()
     system_prompt = build_system_prompt()
 
-    if use_stream:
-        console.print("[dim]Streaming response...[/dim]")
-        streamed_tokens = []
-        def on_token(token):
-            streamed_tokens.append(token)
-            console.print(token, end="", highlight=False, soft_wrap=True)
+    with console.status("[dim]Thinking...[/dim]", spinner="dots"):
         response = chat(
             model=config.model,
             system_prompt=system_prompt,
@@ -181,52 +174,25 @@ def ask(
             user_message=query,
             provider=config.provider,
             api_key=get_groq_api_key(),
-            stream=True,
-            on_token=on_token,
         )
-        console.print()
-
-        if response.kind == "command":
-            if response.reason:
-                _display_command("", response.reason)
-                if yes or Confirm.ask("  Run this command?", default=False):
-                    _run_command(response.command)
-        elif response.kind == "clarify":
-            _display_clarification(response.clarification or "")
-        elif response.kind == "humane":
-            _display_humane(response.reason or response.raw or "Done.")
-        elif response.kind != "command":
-            _display_error(response.raw or "Unknown error.")
-    else:
-        with console.status("[dim]Thinking...[/dim]", spinner="dots"):
-            response = chat(
-                model=config.model,
-                system_prompt=system_prompt,
-                history=history,
-                user_message=query,
-                provider=config.provider,
-                api_key=get_groq_api_key(),
-            )
-        if response.kind == "command":
-            _display_command(response.command or "", response.reason or "")
-            if yes or Confirm.ask("  Run this command?", default=False):
-                _run_command(response.command)
-
-        elif response.kind == "clarify":
-            _display_clarification(response.clarification or "")
-        elif response.kind == "humane":
-            _display_humane(response.reason or response.raw or "Done.")
-        else:
-            _display_error(response.raw or "Unknown error.")
+    
+    if response.kind == "command":
+        _display_command(response.command or "", response.reason or "")
+        if yes or Confirm.ask("  Run this command?", default=False):
+            _run_command(response.command or "")        
+    elif response.kind == "clarify":
+        _display_clarification(response.clarification or "")
+    elif response.kind == "humane":
+        _display_humane(response.reason or response.raw or "Done.")
+    elif response.kind != "command":
+        _display_error(response.raw or "Unknown error.")
 
     updated_history = append_exchange(history, query, response.raw or "")
     save_history(updated_history)
 
-
 @app.command()
 def config(
     model: str | None = typer.Option(None, "--model", help="Set the model to use for the selected provider."),
-    llm: str | None = typer.Option(None, "--llm", help="Deprecated alias for --model."),
     provider: str | None = typer.Option(None, "--provider", help="Set provider: ollama or groq."),
     show: bool = typer.Option(False, "--show", help="Show current config."),
     stream: str | None = typer.Option(None, "--stream", help="Set whether to stream model output (true/false)."),
@@ -243,7 +209,7 @@ def config(
         console.print(f"[green]✓[/green] Provider set to [cyan]{updated.provider}[/cyan]")
         updated_any = True
 
-    target_model = model or llm
+    target_model = model
     if target_model:
         updated = set_model(target_model)
         console.print(f"[green]✓[/green] Model set to [cyan]{updated.model}[/cyan]")

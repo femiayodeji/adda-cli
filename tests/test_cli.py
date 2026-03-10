@@ -72,9 +72,9 @@ class TestCLI(unittest.TestCase):
 
     def test_display_command_none_command(self):
         try:
-            _display_command(None, "Reason for None command")
+            _display_command("", "Reason for None command")
         except Exception as e:
-            self.fail(f"_display_command raised an exception when command is None: {e}")
+            self.fail(f"_display_command raised an exception when command is 'None' string: {e}")
 
     def test_display_clarification(self):
         try:

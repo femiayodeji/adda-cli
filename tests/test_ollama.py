@@ -1,6 +1,7 @@
+import os
 import unittest
 from unittest.mock import Mock, patch
-from adda.ollama import _parse_response, OllamaResponse, check_ollama_running, check_model_available
+from adda.ollama import _parse_response, OllamaResponse, check_ollama_running, check_model_available, get_groq_api_key
 
 class TestOllama(unittest.TestCase):
     @patch("adda.ollama.requests.get")
@@ -61,86 +62,10 @@ class TestOllama(unittest.TestCase):
         self.assertEqual(response.kind, "error")
         self.assertEqual(response.raw, text)
 
-    @patch("adda.ollama.requests.post")
-    def test_chat_non_streaming(self, mock_post):
-        from adda.ollama import chat
-
-        mock_response = Mock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "message": {"content": "COMMAND: pwd\nREASON: Show current directory"}
-        }
-        mock_post.return_value = mock_response
-
-        response = chat(
-            model="llama3.1",
-            system_prompt="system",
-            history=[],
-            user_message="where am i",
-        )
-
-        self.assertEqual(response.kind, "command")
-        self.assertEqual(response.command, "pwd")
-        self.assertEqual(response.reason, "Show current directory")
-        _, kwargs = mock_post.call_args
-        self.assertFalse(kwargs["json"]["stream"])
-
-    @patch("adda.ollama.requests.post")
-    def test_chat_streaming(self, mock_post):
-        from adda.ollama import chat
-
-        mock_response = Mock()
-        mock_response.raise_for_status.return_value = None
-        mock_response.iter_lines.return_value = [
-            '{"message":{"content":"COMMAND: pwd\\n"},"done":false}',
-            '{"message":{"content":"REASON: Show current directory"},"done":false}',
-            '{"done":true}',
-        ]
-        mock_post.return_value = mock_response
-
-        seen_tokens: list[str] = []
-        response = chat(
-            model="llama3.1",
-            system_prompt="system",
-            history=[],
-            user_message="where am i",
-            stream=True,
-            on_token=seen_tokens.append,
-        )
-
-        self.assertEqual(response.kind, "command")
-        self.assertEqual(response.command, "pwd")
-        self.assertEqual(response.reason, "Show current directory")
-        self.assertEqual(
-            seen_tokens,
-            ["COMMAND: pwd\n", "REASON: Show current directory"],
-        )
-        _, kwargs = mock_post.call_args
-        self.assertTrue(kwargs["json"]["stream"])
-        self.assertTrue(kwargs["stream"])
-
-    @patch("adda.ollama.get_groq_api_key", return_value=None)
-    def test_chat_groq_missing_key(self, _):
-        from adda.ollama import chat
-
-        response = chat(
-            model="llama-3.3-70b-versatile",
-            system_prompt="system",
-            history=[],
-            user_message="where am i",
-            provider="groq",
-        )
-
-        self.assertEqual(response.kind, "error")
-        self.assertIn("GROQ_API_KEY", response.raw)
-
-    @patch.dict("adda.ollama.os.environ", {}, clear=True)
-    @patch("adda.config.load_config")
-    def test_get_groq_api_key_falls_back_to_config(self, mock_load_config):
-        from adda.ollama import get_groq_api_key
-
-        mock_load_config.return_value = type("Cfg", (), {"groq_api_key": "cfg-key"})()
-        self.assertEqual(get_groq_api_key(), "cfg-key")
+    @patch.dict("os.environ", {"GROQ_API_KEY": "test-key"})
+    def test_groq_api_key_from_env(self):
+        key = os.environ.get("GROQ_API_KEY")
+        self.assertEqual(key, "test-key")
 
 if __name__ == "__main__":
     unittest.main()

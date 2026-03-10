@@ -7,7 +7,7 @@ CONFIG_DIR = Path.home() / ".config" / "adda"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 DEFAULT_MODEL = "llama3.1"
-DEFAULT_STREAM = True
+DEFAULT_STREAM = False
 DEFAULT_PROVIDER = "ollama"
 
 

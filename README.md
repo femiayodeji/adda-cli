@@ -26,21 +26,32 @@ adda ask "List all files modified in the last 24 hours"
 
 ## Installation
 
-Clone the repo and install dependencies:
+
+Clone the repo and install with pip (using pyproject.toml):
 
 ```sh
 git clone <repo-url>
 cd adda
-pip install -r requirements.txt
-```
-
-Or install with pip using the included pyproject.toml:
-
-```sh
 pip install .
 ```
 
-This will install the `adda` CLI command.
+Or, for development and running tests, install [Hatch](https://hatch.pypa.io/latest/):
+
+```sh
+pip install --upgrade hatch
+# Or with your package manager: python -m pip install --user hatch
+```
+
+Then, create a virtual environment and install dependencies:
+
+```sh
+hatch env create
+hatch shell
+# Now you're in the environment, install the project in editable mode:
+hatch install
+```
+
+You can now run the `adda` CLI command.
 
 ## Configuration
 
