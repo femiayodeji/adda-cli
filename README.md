@@ -1,115 +1,191 @@
 # adda
 
-**adda** is a simple CLI conversational assistant that translates plain English instructions into Linux shell commands, powered by a local LLM.
+**adda** is a CLI assistant that translates plain English into Linux shell commands, powered by a local or remote LLM. Describe what you want to do — adda suggests the right command and runs it on your confirmation.
+
+---
+
+## Demo
+
+```sh
+$ adda "show me files larger than 100MB"
+
+  ╭─ Suggested Command ────────────────────────────────────╮
+  │                                                        │
+  │   find . -type f -size +100M                          │
+  │                                                        │
+  │   Finds all files larger than 100MB in the current    │
+  │   directory.                                          │
+  │                                                        │
+  ╰────────────────────────────────────────────────────────╯
+
+  Run this command? [y/N]: y
+
+  ╭─ Output ───────────────────────────────────────────────╮
+  │  ./videos/recording.mp4   2.1G                        │
+  │  ./backup/archive.tar.gz  430M                        │
+  ╰────────────────────────────────────────────────────────╯
+```
+
+---
 
 ## Features
 
-- Converts natural language requests into practical shell commands.
-- Supports interactive conversations and command clarification.
-- Works locally with Ollama or remotely with Groq.
-- Keeps conversation history and can start fresh sessions.
+- Plain English to shell command translation
+- Runs the suggested command on your confirmation
+- Conversation history — follow-up requests remember context
+- Supports **Ollama** (local) and **Groq** (cloud) as providers
+- Asks for clarification when your request is ambiguous
+- `--yes` flag to skip confirmation for power users
+
+---
+
+## Requirements
+
+- Python 3.10+
+- [Ollama](https://ollama.com) running locally, **or** a Groq API key
+
+---
+
+## Installation
+
+Clone the repo and install:
+
+```sh
+git clone https://github.com/femiayodeji/adda-cli.git
+cd adda
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+Verify everything is working:
+
+```sh
+adda status
+```
+
+---
 
 ## Usage
 
 ```sh
-adda "List all files modified in the last 24 hours"
-Or
-adda cmd "List all files modified in the last 24 hours"
+# Ask anything in plain English
+adda "list all files modified in the last 24 hours"
+
+# Explicit subcommand (same result)
+adda cmd "list all files modified in the last 24 hours"
+
+# Skip confirmation and run immediately
+adda "show disk usage" --yes
+
+# Start a fresh conversation
+adda "show running processes" --new
 ```
 
-- Use plain English to describe what you want to do.
-- The assistant will respond with the appropriate shell command.
-- You can start a new conversation with `--new`.
+### Conversation
 
-## Requirements
-
-- Python 3.8+
-- Ollama running locally (or Groq API key for remote)
-
-## Installation
-
-
-Clone the repo and install with pip (using pyproject.toml):
+adda remembers context across requests in the same session:
 
 ```sh
-git clone <repo-url>
-cd adda
-pip install .
+$ adda "show me log files"
+# suggests: find . -name "*.log"
+
+$ adda "now only ones modified today"
+# suggests: find . -name "*.log" -mtime 0
 ```
 
-Or, for development and running tests, install [Hatch](https://hatch.pypa.io/latest/):
+Clear the session at any time:
 
 ```sh
-pip install --upgrade hatch
-# Or with your package manager: python -m pip install --user hatch
+adda clear
 ```
 
-Then, create a virtual environment and install dependencies:
-
-```sh
-hatch env create
-hatch shell
-# Now you're in the environment, install the project in editable mode:
-hatch install
-```
-
-You can now run the `adda` CLI command.
+---
 
 ## Configuration
 
+Config is stored at `~/.config/adda/config.json`.
 
-### Default Configuration
-
-- By default, adda uses Ollama as the provider and the `llama3.1` model.
-- The configuration file is stored at `~/.config/adda/config.json`.
-
-### Changing Provider or Model
-
-You can change the provider (e.g., to `groq`) or the model by editing the config file or using the CLI (if supported):
-
-- **Provider:** `ollama` (default) or `groq`
-- **Model:** e.g., `llama3.1` (default)
-
-
-### Setting Groq API Key
-
-If you want to use Groq as the provider, set your API key as an environment variable:
+### Commands
 
 ```sh
-export GROQ_API_KEY=your-groq-api-key
+# Set provider
+adda config --provider ollama
+adda config --provider groq
+
+# Set model
+adda config --model llama3.1
+adda config --model llama-3.3-70b-versatile
+
+# Enable or disable streaming
+adda config --stream true
+adda config --stream false
+
+# Show current config
+adda config --show
 ```
 
-### Example: Configure for Ollama (Llama Model)
+### Providers
 
-You can configure adda to use Ollama and a llama model with streaming enabled:
+#### Ollama (default)
+
+Install Ollama from [ollama.com](https://ollama.com), then pull a model:
 
 ```sh
-adda config --provider ollama --model llama3.1 --stream true
+ollama pull llama3.1
+ollama serve
 ```
 
-### Example: Configure for Groq
+#### Groq
 
-You can configure adda to use Groq and a specific model with streaming enabled and your API key:
+Set your API key as an environment variable (never stored on disk):
 
 ```sh
-adda config --provider groq --model llama-3.3-70b-versatile --stream true --api-key GROQ_API_KEY
+export GROQ_API_KEY=your_groq_api_key
+```
+
+Get a free API key at [console.groq.com](https://console.groq.com).
+
+Then configure adda to use Groq:
+
+```sh
+adda config --provider groq --model llama-3.3-70b-versatile
 ```
 
 ### Example config.json
 
 ```json
 {
-	"provider": "ollama",
-	"model": "llama3.1",
-	"stream": true,
-	"groq_api_key": null
+  "provider": "ollama",
+  "model": "llama3.1",
+  "stream": false
 }
 ```
 
-You can also customize whether responses are streamed (`stream: true`) or returned all at once.
+---
+
+## Commands Reference
+
+| Command | Description |
+|---|---|
+| `adda "<query>"` | Suggest and optionally run a command |
+| `adda cmd "<query>"` | Same as above, explicit subcommand |
+| `adda config --show` | Show current configuration |
+| `adda config --provider <name>` | Set provider (ollama or groq) |
+| `adda config --model <name>` | Set model |
+| `adda config --stream <true/false>` | Toggle streaming |
+| `adda status` | Check provider and model availability |
+| `adda clear` | Clear conversation history |
+
+### Options for `adda` / `adda cmd`
+
+| Option | Description |
+|---|---|
+| `--yes`, `-y` | Run command without confirmation |
+| `--new`, `-n` | Start a fresh conversation |
 
 ---
 
----
+## License
 
-Let me know if you want to add usage examples, contribution guidelines, or more details!
+MIT
