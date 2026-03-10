@@ -138,19 +138,40 @@ ollama serve
 
 #### Groq
 
-Set your API key as an environment variable (never stored on disk):
+1. Sign up at [console.groq.com](https://console.groq.com)
+2. Go to **API Keys** and create a new key
+3. Set it as an environment variable (never stored on disk):
 
 ```sh
 export GROQ_API_KEY=your_groq_api_key
 ```
 
-Get a free API key at [console.groq.com](https://console.groq.com).
+To persist it across terminal sessions, add it to your shell config:
 
-Then configure adda to use Groq:
+```sh
+# ~/.bashrc or ~/.zshrc
+export GROQ_API_KEY=your_groq_api_key
+```
+
+Then reload:
+
+```sh
+source ~/.bashrc
+```
+
+4. Configure adda to use Groq:
 
 ```sh
 adda config --provider groq --model llama-3.3-70b-versatile
 ```
+
+5. Verify:
+
+```sh
+adda status
+```
+
+Available Groq models can be found at [console.groq.com/docs/models](https://console.groq.com/docs/models).
 
 ### Example config.json
 
