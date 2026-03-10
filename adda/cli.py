@@ -2,8 +2,9 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-
+from rich.prompt import Confirm
 from rich import print as rprint
+import subprocess
 
 from adda.config import (
     load_config,
@@ -90,6 +91,30 @@ def _display_command(command: str, reason: str | None) -> None:
         )
     )
 
+def _run_command(command: str) -> None:
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            text=True,
+            capture_output=True,
+        )
+        output = result.stdout or result.stderr
+
+        console.print(
+            Panel(
+                Text(output.strip()),
+                title="[bold]Output[/bold]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+
+        if result.returncode != 0:
+            console.print(f"[dim red]  Exit code: {result.returncode}[/dim red]")
+
+    except Exception as e:
+        _display_error(f"Failed to run command: {e}")
 
 def _display_clarification(question: str | None) -> None:
     console.print(
@@ -129,6 +154,7 @@ def ask(
     query: str = typer.Argument(..., help="What you want to do in plain English."),
     new: bool = typer.Option(False, "--new", "-n", help="Start a fresh conversation."),
     stream: bool | None = typer.Option(None, "--stream/--no-stream", help="Stream model output as it is generated."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Run command without confirmation."),
 ):
     config = load_config()
     use_stream = config.stream if stream is None else stream
@@ -145,6 +171,10 @@ def ask(
 
     if use_stream:
         console.print("[dim]Streaming response...[/dim]")
+        streamed_tokens = []
+        def on_token(token):
+            streamed_tokens.append(token)
+            console.print(token, end="", highlight=False, soft_wrap=True)
         response = chat(
             model=config.model,
             system_prompt=system_prompt,
@@ -153,9 +183,21 @@ def ask(
             provider=config.provider,
             api_key=get_groq_api_key(),
             stream=True,
-            on_token=lambda token: console.print(token, end="", highlight=False, soft_wrap=True),
+            on_token=on_token,
         )
         console.print()
+
+        if response.kind == "command":
+            if response.reason:
+                _display_command("", response.reason)
+                if yes or Confirm.ask("  Run this command?", default=False):
+                    _run_command(response.command)
+        elif response.kind == "clarify":
+            _display_clarification(response.clarification or "")
+        elif response.kind == "humane":
+            _display_humane(response.reason or response.raw or "Done.")
+        elif response.kind != "command":
+            _display_error(response.raw or "Unknown error.")
     else:
         with console.status("[dim]Thinking...[/dim]", spinner="dots"):
             response = chat(
@@ -166,19 +208,17 @@ def ask(
                 provider=config.provider,
                 api_key=get_groq_api_key(),
             )
+        if response.kind == "command":
+            _display_command(response.command or "", response.reason or "")
+            if yes or Confirm.ask("  Run this command?", default=False):
+                _run_command(response.command)
 
-
-    if response.kind == "command":
-        _display_command(response.command or "", response.reason or "")
-
-    elif response.kind == "clarify":
-        _display_clarification(response.clarification or "")
-
-    elif response.kind == "humane":
-        _display_humane(response.reason or response.raw or "Done.")
-
-    else:
-        _display_error(response.raw or "Unknown error.")
+        elif response.kind == "clarify":
+            _display_clarification(response.clarification or "")
+        elif response.kind == "humane":
+            _display_humane(response.reason or response.raw or "Done.")
+        else:
+            _display_error(response.raw or "Unknown error.")
 
     updated_history = append_exchange(history, query, response.raw or "")
     save_history(updated_history)
