@@ -57,6 +57,7 @@ You can change the provider (e.g., to `groq`) or the model by editing the config
 - **Provider:** `ollama` (default) or `groq`
 - **Model:** e.g., `llama3.1` (default)
 
+
 ### Setting Groq API Key
 
 If you want to use Groq as the provider, set your API key as an environment variable:
@@ -66,6 +67,23 @@ export GROQ_API_KEY=your-groq-api-key
 ```
 
 Or add it to the config file at `~/.config/adda/config.json` under `groq_api_key`.
+
+
+### Example: Configure for Ollama (Llama Model)
+
+You can configure adda to use Ollama and a llama model with streaming enabled:
+
+```sh
+adda config --provider ollama --model llama3.1 --stream true
+```
+
+### Example: Configure for Groq
+
+You can configure adda to use Groq and a specific model with streaming enabled and your API key:
+
+```sh
+adda config --provider groq --model llama-3.3-70b-versatile --stream true --api-key GROQ_API_KEY
+```
 
 ### Example config.json
 
