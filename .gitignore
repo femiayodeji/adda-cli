@@ -67,4 +67,4 @@ pip-delete-this-directory.txt
 
 # Environment variables
 ENV/
-.env.env
+.env
