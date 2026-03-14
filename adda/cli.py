@@ -1,3 +1,4 @@
+import sys
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -293,7 +294,6 @@ def main(
     cmd(query=query, new=new, yes=yes)
 
 def run():
-    import sys
     args = sys.argv[1:]
     
     # if first arg doesn't look like a subcommand, inject "cmd"
